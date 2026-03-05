@@ -42,7 +42,7 @@ router.get('/', requireAuth, requireStaff, async (req, res, next) => {
  * POST /api/customers/:customerId/history - Add history entry. created_by = token sub.
  * If art = 'appointment' it appears in Appointment List until marked completed.
  */
-router.post('/', requireAuth, requireStaff, async (req, res, next) => {
+router.post('/:customerId/history', requireAuth, requireStaff, async (req, res, next) => {
   try {
     const customerId = parseInt(req.params.customerId, 10);
     if (isNaN(customerId)) return res.status(400).json({ error: 'Invalid customer id' });
