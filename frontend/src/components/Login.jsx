@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { useAuth } from "react-oidc-context";
 import './Login.css'
 
 function Login() {
+  const auth = useAuth();
+  console.log(auth, "authhhh");
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
@@ -66,6 +69,23 @@ function Login() {
             Sign in
           </button>
         </form>
+
+        <div className="login-divider">
+          <span>OR</span>
+        </div>
+
+        <button
+          type="button"
+          className="zitadel-login-btn"
+          onClick={() => auth.signinRedirect()}
+        >
+          <img
+            src="https://raw.githubusercontent.com/zitadel/zitadel/main/docs/docs/static/img/zitadel-logo-dark.svg"
+            alt="Zitadel Logo"
+            className="zitadel-icon"
+          />
+          Login with Zitadel
+        </button>
 
         <p className="login-footer">
           Contact your administrator if you need access.

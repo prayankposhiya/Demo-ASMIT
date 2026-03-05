@@ -80,6 +80,7 @@ function requireAuth(req, res, next) {
     if (err) {
       return res.status(401).json({ error: 'Invalid or expired token', detail: err.message });
     }
+    console.log(decoded);
     req.user = {
       sub: decoded.sub,
       role: normalizeRole(decoded) || null,
