@@ -12,7 +12,7 @@ export const zitadelConfig = {
     client_id: "362715785161881926",
 
     // Where Zitadel redirects after login — must match exactly in Dashboard
-    redirect_uri: "http://localhost:5173/dashboard",
+    redirect_uri: "http://localhost:5173/appointments",
 
     // Where Zitadel redirects after logout
     post_logout_redirect_uri: "http://localhost:5173/login",

@@ -1,0 +1,234 @@
+.customer-detail-page {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+
+.detail-header {
+    margin-bottom: 2rem;
+}
+
+.back-btn {
+    background: transparent;
+    border: none;
+    color: #16a34a;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.2s;
+}
+
+.back-btn:hover {
+    transform: translateX(-4px);
+}
+
+.detail-header h1 {
+    font-size: 2.25rem;
+    color: #0f172a;
+    margin: 0;
+}
+
+.customer-id-tag {
+    color: #64748b;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.detail-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+    padding-bottom: 1rem;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    background: rgba(34, 197, 94, 0.05);
+    color: #16a34a;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #22c55e 0%, #3b82f6 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.info-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(34, 197, 94, 0.05);
+    border: 1px solid rgba(34, 197, 94, 0.1);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+}
+
+.info-item label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.info-item p {
+    font-size: 1.125rem;
+    color: #1e293b;
+    font-weight: 500;
+    margin: 0;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.add-history-btn {
+    background: white;
+    border: 1px solid #16a34a;
+    color: #16a34a;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-history-btn:hover {
+    background: #16a34a;
+    color: white;
+}
+
+.add-history-form {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px dashed rgba(34, 197, 94, 0.3);
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row input,
+.form-row select,
+.add-history-form textarea {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: inherit;
+}
+
+.add-history-form textarea {
+    width: 100%;
+    min-height: 100px;
+    margin-bottom: 1rem;
+}
+
+.submit-history-btn {
+    background: #16a34a;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.history-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border-left: 4px solid #3b82f6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.history-item.completed {
+    border-left-color: #16a34a;
+    opacity: 0.8;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.art-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.art-badge.appointment {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.art-badge.service {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.art-badge.other {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.item-date {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.history-item h3 {
+    margin: 0 0 0.5rem;
+    color: #0f172a;
+}
+
+.history-item p {
+    color: #475569;
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.detail-loading {
+    padding: 4rem;
+    text-align: center;
+    font-size: 1.25rem;
+    color: #64748b;
+}

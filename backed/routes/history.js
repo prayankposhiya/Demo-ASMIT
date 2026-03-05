@@ -24,7 +24,7 @@ function canModify(historyRow, user) {
  * GET /api/customers/:customerId/history - All history entries for customer (any art).
  * Mounted at /api/customers/:customerId/history so req.params.customerId is set.
  */
-router.get('/', requireAuth, requireStaff, async (req, res, next) => {
+router.get('/:customerId/history', requireAuth, requireStaff, async (req, res, next) => {
   try {
     const customerId = parseInt(req.params.customerId, 10);
     if (isNaN(customerId)) return res.status(400).json({ error: 'Invalid customer id' });

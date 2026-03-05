@@ -3,7 +3,8 @@
   line-height: 1.5;
   font-weight: 400;
   color: #0f172a;
-  background-color: #e8f5e9;
+  background: linear-gradient(135deg, #e8f5e9 0%, #e3f2fd 50%, #e8f5e9 100%);
+  background-attachment: fixed;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

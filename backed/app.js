@@ -43,7 +43,7 @@ app.get('/api/health', function (req, res) {
 // API routes (all protected by JWT in their routers)
 // Mount history before customers so /api/customers/:id/history is not caught by customers GET /:id
 app.use('/api/appointments', appointmentsRouter);
-app.use('/api/customers', historyRouter);
+app.use('/api/customer-history', historyRouter);
 app.use('/api/customers', customersRouter);
 
 // catch 404 and forward to error handler
