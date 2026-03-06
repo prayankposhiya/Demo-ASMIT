@@ -133,11 +133,11 @@
 }
 
 .status-future {
-    background-color: rgba(59, 130, 246, 0.05);
+    background-color: rgba(234, 179, 8, 0.05);
 }
 
 .status-future td {
-    color: #1e40af;
+    color: #854d0e;
 }
 
 .actions-cell {

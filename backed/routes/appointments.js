@@ -9,6 +9,7 @@ const router = express.Router();
 const { query } = require('../db/connection');
 const { requireAuth } = require('../middleware/auth');
 const { requireStaff } = require('../middleware/roles');
+const { ADMIN } = require('../config/constants');
 
 // All routes require auth and Admin or Staff
 router.use(requireAuth);
@@ -22,7 +23,7 @@ router.use(requireStaff);
 router.get('/', async (req, res, next) => {
   try {
     const [rows] = await query(
-      `SELECT h.id AS history_id, c.id AS customer_id, c.first_name, c.last_name, h.date, h.time, h.description
+      `SELECT h.id AS history_id, c.id AS customer_id, c.first_name, c.last_name, h.date, h.time, h.description, h.created_by
        FROM history h
        INNER JOIN customers c ON c.id = h.customer_id
        WHERE h.art = 'appointment' AND h.completed = 0
@@ -42,6 +43,15 @@ router.patch('/:id/complete', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid appointment id' });
+
+    // Check ownership
+    const [rows] = await query('SELECT created_by FROM history WHERE id = ? AND art = ?', [id, 'appointment']);
+    if (rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
+
+    if (req.user.role !== ADMIN && rows[0].created_by !== req.user.sub) {
+      return res.status(403).json({ error: 'Forbidden: you can only complete your own appointments' });
+    }
+
     const [result] = await query(
       'UPDATE history SET completed = 1 WHERE id = ? AND art = ?',
       [id, 'appointment']

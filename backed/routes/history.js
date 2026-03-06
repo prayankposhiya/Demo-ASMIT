@@ -9,6 +9,7 @@ const router = express.Router();
 const { query } = require('../db/connection');
 const { requireAuth } = require('../middleware/auth');
 const { requireStaff } = require('../middleware/roles');
+const { ADMIN } = require('../config/constants');
 
 const VALID_ART = ['appointment', 'service', 'other'];
 
@@ -16,7 +17,7 @@ const VALID_ART = ['appointment', 'service', 'other'];
  * Check if current user can edit/delete this history row (Admin = any, Staff = own only).
  */
 function canModify(historyRow, user) {
-  if (user.role === 'Admin') return true;
+  if (user.role === ADMIN) return true;
   return historyRow.created_by === user.sub;
 }
 
@@ -67,16 +68,15 @@ router.post('/:customerId/history', requireAuth, requireStaff, async (req, res, 
 });
 
 /**
- * PUT /api/customers/:customerId/history/:id - Update history. Ownership enforced.
+ * PUT /api/customer-history/:customerId/history/:id - Update history. Ownership enforced.
  */
 router.put('/:id', requireAuth, requireStaff, async (req, res, next) => {
   try {
-    const customerId = parseInt(req.params.customerId, 10);
     const id = parseInt(req.params.id, 10);
-    if (isNaN(customerId) || isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
     const [rows] = await query(
-      'SELECT id, customer_id, created_by FROM history WHERE id = ? AND customer_id = ?',
-      [id, customerId]
+      'SELECT id, customer_id, created_by FROM history WHERE id = ?',
+      [id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'History entry not found' });
     if (!canModify(rows[0], req.user)) {
@@ -107,16 +107,15 @@ router.put('/:id', requireAuth, requireStaff, async (req, res, next) => {
 });
 
 /**
- * DELETE /api/customers/:customerId/history/:id - Delete history. Ownership enforced.
+ * DELETE /api/customer-history/:customerId/history/:id - Delete history. Ownership enforced.
  */
 router.delete('/:id', requireAuth, requireStaff, async (req, res, next) => {
   try {
-    const customerId = parseInt(req.params.customerId, 10);
     const id = parseInt(req.params.id, 10);
-    if (isNaN(customerId) || isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
     const [rows] = await query(
-      'SELECT id, customer_id, created_by FROM history WHERE id = ? AND customer_id = ?',
-      [id, customerId]
+      'SELECT id, customer_id, created_by FROM history WHERE id = ?',
+      [id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'History entry not found' });
     if (!canModify(rows[0], req.user)) {

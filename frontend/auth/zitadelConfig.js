@@ -6,10 +6,10 @@
 
 export const zitadelConfig = {
     // Your Zitadel domain (e.g. https://my-company.zitadel.cloud)
-    authority: "https://demotask-8o6xcx.us1.zitadel.cloud/",
+    authority: "https://zitadel.vc-16-48-strato.asm-itsupport.de/",
 
     // Client ID of your Web Application in Zitadel
-    client_id: "362715785161881926",
+    client_id: "362659027303333891",
 
     // Where Zitadel redirects after login — must match exactly in Dashboard
     redirect_uri: "http://localhost:5173/appointments",

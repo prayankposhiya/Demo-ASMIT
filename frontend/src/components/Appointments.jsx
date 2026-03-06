@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useNavigate } from 'react-router-dom';
 import './Appointments.css';
+import { ADMIN } from '../../config/constants';
+import { normalizeRole } from '../../config/utils';
 
 const Appointments = () => {
     const auth = useAuth();
@@ -16,6 +18,8 @@ const Appointments = () => {
         time: '',
         description: ''
     });
+    const userRole = normalizeRole(auth?.user?.profile);
+    const userSub = auth?.user?.profile?.sub;
 
     const fetchAppointments = async () => {
         try {
@@ -25,6 +29,7 @@ const Appointments = () => {
                 }
             });
             const data = await response.json();
+            console.log(data, "data");
             setAppointments(data);
             setLoading(false);
         } catch (error) {
@@ -178,12 +183,14 @@ const Appointments = () => {
                                         >
                                             View Customer Detail
                                         </button>
-                                        <button
-                                            className="complete-btn"
-                                            onClick={() => handleMarkComplete(appt.history_id)}
-                                        >
-                                            Complete
-                                        </button>
+                                        {(userRole === ADMIN || appt.created_by === userSub) && (
+                                            <button
+                                                className="complete-btn"
+                                                onClick={() => handleMarkComplete(appt.history_id)}
+                                            >
+                                                Complete
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

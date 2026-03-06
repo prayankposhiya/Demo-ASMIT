@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
 import './CustomerDetail.css';
+import { ADMIN } from '../../config/constants';
+import { normalizeRole } from '../../config/utils';
 
 const CustomerDetail = () => {
     const { id } = useParams();
@@ -12,6 +14,8 @@ const CustomerDetail = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('info'); // 'info' or 'history'
     const [showAddHistory, setShowAddHistory] = useState(false);
+    const userRole = normalizeRole(auth?.user?.profile);
+    const userSub = auth?.user?.profile?.sub;
     const [newHistory, setNewHistory] = useState({
         subject: '',
         art: 'appointment',
@@ -19,6 +23,10 @@ const CustomerDetail = () => {
         time: '',
         description: ''
     });
+    const [editingHistory, setEditingHistory] = useState(null);
+    const [showEditHistory, setShowEditHistory] = useState(false);
+    const [deleteHistoryId, setDeleteHistoryId] = useState(null);
+    const [showDeleteHistoryModal, setShowDeleteHistoryModal] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -71,6 +79,56 @@ const CustomerDetail = () => {
             }
         } catch (error) {
             console.error('Error adding history:', error);
+        }
+    };
+
+    const handleEditHistoryClick = (item) => {
+        setEditingHistory({ ...item, date: item.date.split('T')[0] });
+        setShowEditHistory(true);
+        setShowAddHistory(false);
+    };
+
+    const handleEditHistorySubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch(`http://localhost:8000/api/customer-history/${editingHistory.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${auth.user?.id_token}`
+                },
+                body: JSON.stringify(editingHistory)
+            });
+            if (response.ok) {
+                fetchData();
+                setShowEditHistory(false);
+                setEditingHistory(null);
+            }
+        } catch (error) {
+            console.error('Error updating history:', error);
+        }
+    };
+
+    const handleDeleteHistoryClick = (historyId) => {
+        setDeleteHistoryId(historyId);
+        setShowDeleteHistoryModal(true);
+    };
+
+    const confirmDeleteHistory = async () => {
+        try {
+            const response = await fetch(`http://localhost:8000/api/customer-history/${deleteHistoryId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${auth.user?.id_token}`
+                }
+            });
+            if (response.ok) {
+                fetchData();
+                setShowDeleteHistoryModal(false);
+                setDeleteHistoryId(null);
+            }
+        } catch (error) {
+            console.error('Error deleting history:', error);
         }
     };
 
@@ -180,12 +238,83 @@ const CustomerDetail = () => {
                             </form>
                         )}
 
+                        {showEditHistory && (
+                            <form className="add-history-form edit-form" onSubmit={handleEditHistorySubmit}>
+                                <h3>Edit Interaction Entry</h3>
+                                <div className="form-row">
+                                    <input
+                                        type="text"
+                                        name="subject"
+                                        placeholder="Subject"
+                                        value={editingHistory.subject}
+                                        onChange={(e) => setEditingHistory({ ...editingHistory, subject: e.target.value })}
+                                        required
+                                    />
+                                    <select
+                                        name="art"
+                                        value={editingHistory.art}
+                                        onChange={(e) => setEditingHistory({ ...editingHistory, art: e.target.value })}
+                                    >
+                                        <option value="appointment">Appointment</option>
+                                        <option value="service">Service</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div className="form-row">
+                                    <input
+                                        type="date"
+                                        name="date"
+                                        value={editingHistory.date}
+                                        onChange={(e) => setEditingHistory({ ...editingHistory, date: e.target.value })}
+                                        required
+                                    />
+                                    <input
+                                        type="time"
+                                        name="time"
+                                        value={editingHistory.time}
+                                        onChange={(e) => setEditingHistory({ ...editingHistory, time: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <textarea
+                                    name="description"
+                                    placeholder="Description"
+                                    value={editingHistory.description}
+                                    onChange={(e) => setEditingHistory({ ...editingHistory, description: e.target.value })}
+                                />
+                                <div className="form-actions">
+                                    <button type="submit" className="submit-history-btn">Update Entry</button>
+                                    <button type="button" className="cancel-history-btn" onClick={() => setShowEditHistory(false)}>Cancel</button>
+                                </div>
+                            </form>
+                        )}
+
                         <div className="history-list">
                             {history.length === 0 ? (
                                 <p className="no-history">No history entries found.</p>
                             ) : (
                                 history.map(item => (
                                     <div key={item.id} className={`history-item ${item.completed ? 'completed' : ''}`}>
+                                        <div className="item-actions">
+                                            {(userRole === ADMIN || item.created_by === userSub) && (
+                                                <>
+                                                    <button
+                                                        className="edit-icon-btn"
+                                                        onClick={() => handleEditHistoryClick(item)}
+                                                        title="Edit Entry"
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                    <button
+                                                        className="delete-icon-btn"
+                                                        onClick={() => handleDeleteHistoryClick(item.id)}
+                                                        title="Delete Entry"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                         <div className="item-header">
                                             <span className={`art-badge ${item.art}`}>{item.art}</span>
                                             <span className="item-date">{new Date(item.date).toLocaleDateString()} at {item.time}</span>
@@ -202,6 +331,20 @@ const CustomerDetail = () => {
                     </div>
                 )}
             </div>
+
+            {showDeleteHistoryModal && (
+                <div className="modal-overlay">
+                    <div className="modal-card delete-modal">
+                        <div className="modal-icon">⚠️</div>
+                        <h2>Delete History Entry?</h2>
+                        <p>Are you sure you want to remove this interaction record? This cannot be undone.</p>
+                        <div className="modal-actions">
+                            <button className="confirm-delete-btn" onClick={confirmDeleteHistory}>Yes, Delete</button>
+                            <button className="cancel-modal-btn" onClick={() => setShowDeleteHistoryModal(false)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -40,8 +40,8 @@ function normalizeRole(claims) {
 
   // Zitadel actual format: { "Admin": { "<orgId>": "<orgDomain>" }, ... }
   if (typeof rolesClaim === 'object' && !Array.isArray(rolesClaim)) {
-    if ('Admin' in rolesClaim) return 'Admin';
-    if ('Staff' in rolesClaim) return 'Staff';
+    if ('admin' in rolesClaim) return 'Admin';
+    if ('staff' in rolesClaim) return 'Staff';
     return null;
   }
 
@@ -80,7 +80,7 @@ function requireAuth(req, res, next) {
     if (err) {
       return res.status(401).json({ error: 'Invalid or expired token', detail: err.message });
     }
-    console.log(decoded);
+    console.log(decoded, normalizeRole(decoded), "decoded");
     req.user = {
       sub: decoded.sub,
       role: normalizeRole(decoded) || null,
@@ -89,4 +89,4 @@ function requireAuth(req, res, next) {
   });
 }
 
-module.exports = { requireAuth };
+module.exports = { requireAuth, normalizeRole };

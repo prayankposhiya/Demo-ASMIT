@@ -1,10 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from "react-oidc-context";
+import { useNavigate } from 'react-router-dom';
 import './Login.css'
 
 function Login() {
   const auth = useAuth();
-  console.log(auth, "authhhh");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      navigate('/appointments');
+    }
+  }, [auth.isAuthenticated, navigate]);
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
