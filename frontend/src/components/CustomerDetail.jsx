@@ -1,112 +1,86 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import './CustomerDetail.css';
 import { ADMIN } from '../../config/constants';
 import { normalizeRole } from '../../config/utils';
+import { useNotification } from '../context/NotificationContext';
+import { useCustomerDetail } from '../hooks/useCustomerDetail';
+import Pagination from './Pagination';
 
 const CustomerDetail = () => {
     const { id } = useParams();
     const auth = useAuth();
     const navigate = useNavigate();
-    const [customer, setCustomer] = useState(null);
-    const [history, setHistory] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { showNotification } = useNotification();
+    const {
+        customer,
+        history,
+        historyPagination,
+        loading,
+        addHistory,
+        updateHistory,
+        deleteHistory,
+        setHistoryPage
+    } = useCustomerDetail(id, auth.isAuthenticated);
+
     const [activeTab, setActiveTab] = useState('info'); // 'info' or 'history'
-    const [showAddHistory, setShowAddHistory] = useState(false);
+    const [showForm, setShowForm] = useState(false);
     const userRole = normalizeRole(auth?.user?.profile);
     const userSub = auth?.user?.profile?.sub;
-    const [newHistory, setNewHistory] = useState({
-        subject: '',
-        art: 'appointment',
-        date: '',
-        time: '',
-        description: ''
-    });
-    const [editingHistory, setEditingHistory] = useState(null);
-    const [showEditHistory, setShowEditHistory] = useState(false);
     const [deleteHistoryId, setDeleteHistoryId] = useState(null);
     const [showDeleteHistoryModal, setShowDeleteHistoryModal] = useState(false);
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            const headers = { 'Authorization': `Bearer ${auth.user?.id_token}` };
+    const validationSchema = Yup.object({
+        subject: Yup.string().required('Subject is required'),
+        art: Yup.string().required('Type is required'),
+        date: Yup.string().required('Date is required'),
+        time: Yup.string().required('Time is required'),
+        description: Yup.string(),
+    });
 
-            // Fetch customer info
-            const custRes = await fetch(`http://localhost:8000/api/customers/${id}`, { headers });
-            const custData = await custRes.json();
-            setCustomer(custData);
+    const formik = useFormik({
+        initialValues: {
+            id: '',
+            subject: '',
+            art: 'appointment',
+            date: '',
+            time: '',
+            description: ''
+        },
+        validationSchema,
+        enableReinitialize: true,
+        onSubmit: async (values, { resetForm }) => {
+            try {
+                const isEditing = !!values.id;
+                const response = isEditing
+                    ? await updateHistory(values.id, values)
+                    : await addHistory(values);
 
-            // Fetch history
-            const histRes = await fetch(`http://localhost:8000/api/customer-history/${id}/history`, { headers });
-            const histData = await histRes.json();
-            setHistory(histData);
-
-            setLoading(false);
-        } catch (error) {
-            console.error('Error fetching customer detail:', error);
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (auth.isAuthenticated && id) {
-            fetchData();
-        }
-    }, [auth.isAuthenticated, id]);
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setNewHistory(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleAddHistory = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`http://localhost:8000/api/customer-history/${id}/history`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                },
-                body: JSON.stringify(newHistory)
-            });
-            if (response.ok) {
-                fetchData();
-                setNewHistory({ subject: '', art: 'appointment', date: '', time: '', description: '' });
-                setShowAddHistory(false);
+                if (response.data.success) {
+                    showNotification(`History entry ${isEditing ? 'updated' : 'added'} successfully!`, 'success');
+                    resetForm();
+                    setShowForm(false);
+                }
+            } catch (error) {
+                console.error(`Error ${values.id ? 'updating' : 'adding'} history:`, error);
+                showNotification(`Error: ${error.response?.data?.error || error.message}`, 'error');
             }
-        } catch (error) {
-            console.error('Error adding history:', error);
-        }
-    };
+        },
+    });
 
     const handleEditHistoryClick = (item) => {
-        setEditingHistory({ ...item, date: item.date.split('T')[0] });
-        setShowEditHistory(true);
-        setShowAddHistory(false);
-    };
-
-    const handleEditHistorySubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`http://localhost:8000/api/customer-history/${editingHistory.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                },
-                body: JSON.stringify(editingHistory)
-            });
-            if (response.ok) {
-                fetchData();
-                setShowEditHistory(false);
-                setEditingHistory(null);
-            }
-        } catch (error) {
-            console.error('Error updating history:', error);
-        }
+        formik.setValues({
+            id: item.id || '',
+            subject: item.subject || '',
+            art: item.art || 'appointment',
+            date: item.date ? item.date.split('T')[0] : '',
+            time: item.time || '',
+            description: item.description || ''
+        });
+        setShowForm(true);
     };
 
     const handleDeleteHistoryClick = (historyId) => {
@@ -116,19 +90,15 @@ const CustomerDetail = () => {
 
     const confirmDeleteHistory = async () => {
         try {
-            const response = await fetch(`http://localhost:8000/api/customer-history/${deleteHistoryId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                }
-            });
-            if (response.ok) {
-                fetchData();
+            const response = await deleteHistory(deleteHistoryId);
+            if (response.data.success) {
+                showNotification('History entry deleted successfully', 'success');
                 setShowDeleteHistoryModal(false);
                 setDeleteHistoryId(null);
             }
         } catch (error) {
             console.error('Error deleting history:', error);
+            showNotification(`Error: ${error.response?.data?.error || error.message}`, 'error');
         }
     };
 
@@ -190,101 +160,65 @@ const CustomerDetail = () => {
                     <div className="history-section">
                         <div className="section-header">
                             <h2>Interaction History</h2>
-                            <button className="add-history-btn" onClick={() => setShowAddHistory(!showAddHistory)}>
-                                {showAddHistory ? 'Cancel' : '+ Add History Entry'}
+                            <button className="add-history-btn" onClick={() => setShowForm(!showForm)}>
+                                {showForm ? 'Cancel' : '+ Add History Entry'}
                             </button>
                         </div>
 
-                        {showAddHistory && (
-                            <form className="add-history-form" onSubmit={handleAddHistory}>
+                        {showForm && (
+                            <form className={`add-history-form ${formik.values.id ? 'edit-form' : ''}`} onSubmit={formik.handleSubmit}>
+                                <h3>{formik.values.id ? 'Edit Interaction Entry' : 'Add History Entry'}</h3>
                                 <div className="form-row">
-                                    <input
-                                        type="text"
-                                        name="subject"
-                                        placeholder="Subject"
-                                        value={newHistory.subject}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                    <select name="art" value={newHistory.art} onChange={handleInputChange}>
-                                        <option value="appointment">Appointment</option>
-                                        <option value="service">Service</option>
-                                        <option value="other">Other</option>
-                                    </select>
+                                    <div className="form-field">
+                                        <input
+                                            type="text"
+                                            name="subject"
+                                            placeholder="Subject"
+                                            {...formik.getFieldProps('subject')}
+                                            className={(formik.touched.subject || formik.submitCount > 0) && formik.errors.subject ? 'input-error' : ''}
+                                        />
+                                        {(formik.touched.subject || formik.submitCount > 0) && formik.errors.subject && <div className="error-message">{formik.errors.subject}</div>}
+                                    </div>
+                                    <div className="form-field">
+                                        <select name="art" {...formik.getFieldProps('art')}>
+                                            <option value="appointment">Appointment</option>
+                                            <option value="service">Service</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div className="form-row">
-                                    <input
-                                        type="date"
-                                        name="date"
-                                        value={newHistory.date}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                    <input
-                                        type="time"
-                                        name="time"
-                                        value={newHistory.time}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <textarea
-                                    name="description"
-                                    placeholder="Description"
-                                    value={newHistory.description}
-                                    onChange={handleInputChange}
-                                />
-                                <button type="submit" className="submit-history-btn">Save Entry</button>
-                            </form>
-                        )}
-
-                        {showEditHistory && (
-                            <form className="add-history-form edit-form" onSubmit={handleEditHistorySubmit}>
-                                <h3>Edit Interaction Entry</h3>
-                                <div className="form-row">
-                                    <input
-                                        type="text"
-                                        name="subject"
-                                        placeholder="Subject"
-                                        value={editingHistory.subject}
-                                        onChange={(e) => setEditingHistory({ ...editingHistory, subject: e.target.value })}
-                                        required
-                                    />
-                                    <select
-                                        name="art"
-                                        value={editingHistory.art}
-                                        onChange={(e) => setEditingHistory({ ...editingHistory, art: e.target.value })}
-                                    >
-                                        <option value="appointment">Appointment</option>
-                                        <option value="service">Service</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div className="form-row">
-                                    <input
-                                        type="date"
-                                        name="date"
-                                        value={editingHistory.date}
-                                        onChange={(e) => setEditingHistory({ ...editingHistory, date: e.target.value })}
-                                        required
-                                    />
-                                    <input
-                                        type="time"
-                                        name="time"
-                                        value={editingHistory.time}
-                                        onChange={(e) => setEditingHistory({ ...editingHistory, time: e.target.value })}
-                                        required
-                                    />
+                                    <div className="form-field">
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            {...formik.getFieldProps('date')}
+                                            className={(formik.touched.date || formik.submitCount > 0) && formik.errors.date ? 'input-error' : ''}
+                                        />
+                                        {(formik.touched.date || formik.submitCount > 0) && formik.errors.date && <div className="error-message">{formik.errors.date}</div>}
+                                    </div>
+                                    <div className="form-field">
+                                        <input
+                                            type="time"
+                                            name="time"
+                                            {...formik.getFieldProps('time')}
+                                            className={(formik.touched.time || formik.submitCount > 0) && formik.errors.time ? 'input-error' : ''}
+                                        />
+                                        {(formik.touched.time || formik.submitCount > 0) && formik.errors.time && <div className="error-message">{formik.errors.time}</div>}
+                                    </div>
                                 </div>
                                 <textarea
                                     name="description"
                                     placeholder="Description"
-                                    value={editingHistory.description}
-                                    onChange={(e) => setEditingHistory({ ...editingHistory, description: e.target.value })}
+                                    {...formik.getFieldProps('description')}
                                 />
                                 <div className="form-actions">
-                                    <button type="submit" className="submit-history-btn">Update Entry</button>
-                                    <button type="button" className="cancel-history-btn" onClick={() => setShowEditHistory(false)}>Cancel</button>
+                                    <button type="submit" className="submit-history-btn" disabled={formik.isSubmitting}>
+                                        {formik.isSubmitting ? 'Saving...' : (formik.values.id ? 'Update Entry' : 'Save Entry')}
+                                    </button>
+                                    {formik.values.id && (
+                                        <button type="button" className="cancel-history-btn" onClick={() => setShowForm(false)}>Cancel</button>
+                                    )}
                                 </div>
                             </form>
                         )}
@@ -327,6 +261,7 @@ const CustomerDetail = () => {
                                     </div>
                                 ))
                             )}
+                            <Pagination pagination={historyPagination} onPageChange={setHistoryPage} />
                         </div>
                     </div>
                 )}

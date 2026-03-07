@@ -11,7 +11,7 @@ export const zitadelConfig = {
     // Client ID of your Web Application in Zitadel
     client_id: "362659027303333891",
 
-    // Where Zitadel redirects after login — must match exactly in Dashboard
+    // Where Zitadel redirects after login — must match exactly in Appointments
     redirect_uri: "http://localhost:5173/appointments",
 
     // Where Zitadel redirects after logout

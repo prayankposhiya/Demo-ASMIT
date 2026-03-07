@@ -9,6 +9,8 @@ const router = express.Router();
 const { query } = require('../db/connection');
 const { requireAuth } = require('../middleware/auth');
 const { requireStaff } = require('../middleware/roles');
+const { sendResponse } = require('../utils/response');
+const { formatPaginatedResponse } = require('../utils/pagination');
 const { ADMIN } = require('../config/constants');
 
 const VALID_ART = ['appointment', 'service', 'other'];
@@ -22,18 +24,30 @@ function canModify(historyRow, user) {
 }
 
 /**
- * GET /api/customers/:customerId/history - All history entries for customer (any art).
+ * GET /api/customers/:customerId/history - All history entries for customer (any art) with pagination.
  * Mounted at /api/customers/:customerId/history so req.params.customerId is set.
  */
-router.get('/:customerId/history', requireAuth, requireStaff, async (req, res, next) => {
+router.get('/:customerId', requireAuth, requireStaff, async (req, res, next) => {
   try {
     const customerId = parseInt(req.params.customerId, 10);
-    if (isNaN(customerId)) return res.status(400).json({ error: 'Invalid customer id' });
+    if (isNaN(customerId)) return sendResponse(res, 400, false, null, 'Invalid customer id');
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 10;
+    const offset = (page - 1) * pageSize;
+
+    // Get total count
+    const [countResult] = await query('SELECT COUNT(*) as total FROM history WHERE customer_id = ?', [customerId]);
+    const totalData = countResult[0].total;
+
+    // Get paginated data
     const [rows] = await query(
-      'SELECT id, customer_id, subject, art, description, date, time, created_by, created_at, completed FROM history WHERE customer_id = ? ORDER BY date DESC, time DESC',
-      [customerId]
+      'SELECT id, customer_id, subject, art, description, date, time, created_by, created_at, completed FROM history WHERE customer_id = ? ORDER BY date DESC, time DESC LIMIT ? OFFSET ?',
+      [customerId, pageSize, offset]
     );
-    res.json(rows);
+
+    const paginatedData = formatPaginatedResponse(rows, totalData, page, pageSize);
+    sendResponse(res, 200, true, paginatedData);
   } catch (err) {
     next(err);
   }
@@ -43,16 +57,16 @@ router.get('/:customerId/history', requireAuth, requireStaff, async (req, res, n
  * POST /api/customers/:customerId/history - Add history entry. created_by = token sub.
  * If art = 'appointment' it appears in Appointment List until marked completed.
  */
-router.post('/:customerId/history', requireAuth, requireStaff, async (req, res, next) => {
+router.post('/:customerId', requireAuth, requireStaff, async (req, res, next) => {
   try {
     const customerId = parseInt(req.params.customerId, 10);
-    if (isNaN(customerId)) return res.status(400).json({ error: 'Invalid customer id' });
+    if (isNaN(customerId)) return sendResponse(res, 400, false, null, 'Invalid customer id');
     const { subject, art, date, time, description } = req.body || {};
     if (!art || !VALID_ART.includes(art)) {
-      return res.status(400).json({ error: 'art must be one of: appointment, service, other' });
+      return sendResponse(res, 400, false, null, 'art must be one of: appointment, service, other');
     }
     const [cust] = await query('SELECT id FROM customers WHERE id = ?', [customerId]);
-    if (cust.length === 0) return res.status(404).json({ error: 'Customer not found' });
+    if (cust.length === 0) return sendResponse(res, 404, false, null, 'Customer not found');
     const [result] = await query(
       'INSERT INTO history (customer_id, subject, art, description, date, time, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [customerId, subject ? String(subject).trim() : null, art, description ? String(description).trim() : null, date || null, time || null, req.user.sub]
@@ -61,7 +75,7 @@ router.post('/:customerId/history', requireAuth, requireStaff, async (req, res, 
       'SELECT id, customer_id, subject, art, description, date, time, created_by, created_at, completed FROM history WHERE id = ?',
       [result.insertId]
     );
-    res.status(201).json(rows[0]);
+    sendResponse(res, 201, true, rows[0], null, 'History entry added successfully');
   } catch (err) {
     next(err);
   }
@@ -73,21 +87,21 @@ router.post('/:customerId/history', requireAuth, requireStaff, async (req, res, 
 router.put('/:id', requireAuth, requireStaff, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    if (isNaN(id)) return sendResponse(res, 400, false, null, 'Invalid id');
     const [rows] = await query(
       'SELECT id, customer_id, created_by FROM history WHERE id = ?',
       [id]
     );
-    if (rows.length === 0) return res.status(404).json({ error: 'History entry not found' });
+    if (rows.length === 0) return sendResponse(res, 404, false, null, 'History entry not found');
     if (!canModify(rows[0], req.user)) {
-      return res.status(403).json({ error: 'Forbidden: you can only edit your own entries' });
+      return sendResponse(res, 403, false, null, 'Forbidden: you can only edit your own entries');
     }
     const { subject, art, date, time, description } = req.body || {};
     const updates = [];
     const params = [];
     if (subject !== undefined) { updates.push('subject = ?'); params.push(String(subject).trim()); }
     if (art !== undefined) {
-      if (!VALID_ART.includes(art)) return res.status(400).json({ error: 'art must be appointment, service, or other' });
+      if (!VALID_ART.includes(art)) return sendResponse(res, 400, false, null, 'art must be appointment, service, or other');
       updates.push('art = ?'); params.push(art);
     }
     if (description !== undefined) { updates.push('description = ?'); params.push(String(description).trim()); }
@@ -95,12 +109,12 @@ router.put('/:id', requireAuth, requireStaff, async (req, res, next) => {
     if (time !== undefined) { updates.push('time = ?'); params.push(time || null); }
     if (updates.length === 0) {
       const [r] = await query('SELECT id, customer_id, subject, art, description, date, time, created_by, created_at, completed FROM history WHERE id = ?', [id]);
-      return res.json(r[0]);
+      return sendResponse(res, 200, true, r[0]);
     }
     params.push(id);
     await query(`UPDATE history SET ${updates.join(', ')} WHERE id = ?`, params);
     const [updated] = await query('SELECT id, customer_id, subject, art, description, date, time, created_by, created_at, completed FROM history WHERE id = ?', [id]);
-    res.json(updated[0]);
+    sendResponse(res, 200, true, updated[0], null, 'History entry updated successfully');
   } catch (err) {
     next(err);
   }
@@ -112,17 +126,17 @@ router.put('/:id', requireAuth, requireStaff, async (req, res, next) => {
 router.delete('/:id', requireAuth, requireStaff, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    if (isNaN(id)) return sendResponse(res, 400, false, null, 'Invalid id');
     const [rows] = await query(
       'SELECT id, customer_id, created_by FROM history WHERE id = ?',
       [id]
     );
-    if (rows.length === 0) return res.status(404).json({ error: 'History entry not found' });
+    if (rows.length === 0) return sendResponse(res, 404, false, null, 'History entry not found');
     if (!canModify(rows[0], req.user)) {
-      return res.status(403).json({ error: 'Forbidden: you can only delete your own entries' });
+      return sendResponse(res, 403, false, null, 'Forbidden: you can only delete your own entries');
     }
     await query('DELETE FROM history WHERE id = ?', [id]);
-    res.status(204).send();
+    sendResponse(res, 200, true, null, null, 'History entry deleted successfully');
   } catch (err) {
     next(err);
   }

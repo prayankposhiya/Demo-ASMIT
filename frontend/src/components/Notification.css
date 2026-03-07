@@ -1,0 +1,100 @@
+.notification-toast {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    min-width: 300px;
+    max-width: 450px;
+    background: white;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 9999;
+    cursor: pointer;
+    overflow: hidden;
+    animation: slideInRight 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.notification-icon {
+    font-size: 1.25rem;
+}
+
+.notification-message {
+    color: #1e293b;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.notification-toast.success {
+    border-left: 4px solid #22c55e;
+}
+
+.notification-toast.error {
+    border-left: 4px solid #ef4444;
+}
+
+.notification-toast.warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.notification-toast.info {
+    border-left: 4px solid #3b82f6;
+}
+
+.notification-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.05);
+    width: 100%;
+}
+
+.notification-toast.success .notification-progress {
+    background: #22c55e;
+}
+
+.notification-toast.error .notification-progress {
+    background: #ef4444;
+}
+
+.notification-toast.warning .notification-progress {
+    background: #f59e0b;
+}
+
+.notification-toast.info .notification-progress {
+    background: #3b82f6;
+}
+
+.notification-progress {
+    animation: shrinkWidth 5s linear forwards;
+}
+
+@keyframes shrinkWidth {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}

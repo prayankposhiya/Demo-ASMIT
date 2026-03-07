@@ -1,104 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useNavigate } from 'react-router-dom';
-import './Users.css';
-import { ADMIN } from '../../config/constants';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import { normalizeRole } from '../../config/utils';
+import { useNotification } from '../context/NotificationContext';
+import { useUsers } from '../hooks/useUsers';
+import { ADMIN } from '../../config/constants';
+import Pagination from './Pagination';
+import './Users.css';
 
 const Users = () => {
     const auth = useAuth();
-    console.log(auth, "authuser");
     const navigate = useNavigate();
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [newUser, setNewUser] = useState({ first_name: '', last_name: '', email: '', phone: '' });
-    const [editingUser, setEditingUser] = useState(null);
-    const [showEditForm, setShowEditForm] = useState(false);
+    const { showNotification } = useNotification();
+    const { users, pagination, loading, addUser, updateUser, deleteUser, setPage } = useUsers(auth.isAuthenticated);
+    const [showForm, setShowForm] = useState(false);
     const [deleteId, setDeleteId] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-    const userRole = normalizeRole(auth?.user?.profile)
-    console.log(userRole, "userRole");
-    const fetchUsers = async () => {
-        try {
-            const response = await fetch('http://localhost:8000/api/customers', {
-                headers: {
-                    'Authorization': `Bearer ${auth.user?.id_token}`
+    const validationSchema = Yup.object({
+        first_name: Yup.string().required('First name is required'),
+        last_name: Yup.string().required('Last name is required'),
+        email: Yup.string().email('Invalid email address'),
+        phone: Yup.string().matches(/^[0-9+() -]*$/, 'Invalid phone number'),
+    });
+
+    const formik = useFormik({
+        initialValues: { id: '', first_name: '', last_name: '', email: '', phone: '' },
+        validationSchema,
+        enableReinitialize: true,
+        onSubmit: async (values, { resetForm }) => {
+            try {
+                const response = values.id
+                    ? await updateUser(values.id, values)
+                    : await addUser(values);
+
+                if (response.data.success) {
+                    showNotification(`Customer ${values.id ? 'updated' : 'added'} successfully!`, 'success');
+                    resetForm();
+                    setShowForm(false);
                 }
-            });
-            const data = await response.json();
-            console.log(data, "datatat");
-            setUsers(data);
-            setLoading(false);
-        } catch (error) {
-            console.error('Error fetching users:', error);
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (auth.isAuthenticated) {
-            fetchUsers();
-        }
-    }, [auth.isAuthenticated]);
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        if (showEditForm) {
-            setEditingUser(prev => ({ ...prev, [name]: value }));
-        } else {
-            setNewUser(prev => ({ ...prev, [name]: value }));
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            console.log(newUser, "authuser");
-            const response = await fetch('http://localhost:8000/api/customers', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                },
-                body: JSON.stringify(newUser)
-            });
-            if (response.ok) {
-                fetchUsers();
-                setNewUser({ first_name: '', last_name: '', email: '', phone: '' });
-                setShowAddForm(false);
+            } catch (error) {
+                console.error(`Error ${values.id ? 'updating' : 'adding'} user:`, error);
+                showNotification(`Error: ${error.response?.data?.error || error.message}`, 'error');
             }
-        } catch (error) {
-            console.error('Error adding user:', error);
-        }
-    };
+        },
+    });
+
+    const userRole = normalizeRole(auth?.user?.profile)
 
     const handleEditClick = (user) => {
-        setEditingUser({ ...user });
-        setShowEditForm(true);
-        setShowAddForm(false);
+        formik.setValues({
+            id: user.id || '',
+            first_name: user.first_name || '',
+            last_name: user.last_name || '',
+            email: user.email || '',
+            phone: user.phone || ''
+        });
+        setShowForm(true);
     };
 
-    const handleEditSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`http://localhost:8000/api/customers/${editingUser.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                },
-                body: JSON.stringify(editingUser)
-            });
-            if (response.ok) {
-                fetchUsers();
-                setEditingUser(null);
-                setShowEditForm(false);
-            }
-        } catch (error) {
-            console.error('Error updating customer:', error);
-        }
+    const handleAddClick = () => {
+        formik.resetForm();
+        setShowForm(true);
     };
 
     const handleDeleteClick = (userId) => {
@@ -108,22 +73,17 @@ const Users = () => {
 
     const confirmDelete = async () => {
         try {
-            const response = await fetch(`http://localhost:8000/api/customers/${deleteId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                }
-            });
-            if (response.ok) {
-                fetchUsers();
+            const response = await deleteUser(deleteId);
+            if (response.data.success) {
+                showNotification('Customer deleted successfully', 'success');
                 setShowDeleteModal(false);
                 setDeleteId(null);
             } else {
-                const data = await response.json();
-                alert(data.error || 'Failed to delete customer');
+                showNotification('Failed to delete customer', 'error');
             }
         } catch (error) {
             console.error('Error deleting customer:', error);
+            showNotification(`Error: ${error.response?.data?.error || error.message}`, 'error');
         }
     };
 
@@ -132,86 +92,65 @@ const Users = () => {
             <div className="users-header">
                 <h1>Customers</h1>
                 {userRole === ADMIN && (
-                    <button className="add-user-btn" onClick={() => { setShowAddForm(!showAddForm); setShowEditForm(false); }}>
-                        {showAddForm ? 'Cancel' : '+ Add Customer'}
+                    <button
+                        className="add-user-btn"
+                        onClick={() => showForm ? setShowForm(false) : handleAddClick()}
+                    >
+                        {showForm ? 'Cancel' : '+ Add Customer'}
                     </button>
                 )}
             </div>
 
-            {showAddForm && (
-                <form className="add-user-form" onSubmit={handleSubmit}>
-                    <input
-                        type="text"
-                        name="first_name"
-                        placeholder="First Name"
-                        value={newUser.first_name}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <input
-                        type="text"
-                        name="last_name"
-                        placeholder="Last Name"
-                        value={newUser.last_name}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="Email"
-                        value={newUser.email}
-                        onChange={handleInputChange}
-                    />
-                    <input
-                        type="text"
-                        name="phone"
-                        placeholder="Phone"
-                        value={newUser.phone}
-                        onChange={handleInputChange}
-                    />
-                    <button type="submit" className="submit-user-btn">Save Customer</button>
-                </form>
-            )}
-
-            {showEditForm && (
-                <form className="add-user-form edit-form" onSubmit={handleEditSubmit}>
-                    <h3>Edit Customer #{editingUser.id}</h3>
+            {showForm && (
+                <form className={`add-user-form ${formik.values.id ? 'edit-form' : ''}`} onSubmit={formik.handleSubmit}>
+                    <h3>{formik.values.id ? `Edit Customer #${formik.values.id}` : 'Add New Customer'}</h3>
                     <div className="form-grid">
-                        <input
-                            type="text"
-                            name="first_name"
-                            placeholder="First Name"
-                            value={editingUser.first_name}
-                            onChange={handleInputChange}
-                            required
-                        />
-                        <input
-                            type="text"
-                            name="last_name"
-                            placeholder="Last Name"
-                            value={editingUser.last_name}
-                            onChange={handleInputChange}
-                            required
-                        />
-                        <input
-                            type="email"
-                            name="email"
-                            placeholder="Email"
-                            value={editingUser.email || ''}
-                            onChange={handleInputChange}
-                        />
-                        <input
-                            type="text"
-                            name="phone"
-                            placeholder="Phone"
-                            value={editingUser.phone || ''}
-                            onChange={handleInputChange}
-                        />
+                        <div className="form-field">
+                            <input
+                                type="text"
+                                name="first_name"
+                                placeholder="First Name"
+                                {...formik.getFieldProps('first_name')}
+                                className={(formik.touched.first_name || formik.submitCount > 0) && formik.errors.first_name ? 'input-error' : ''}
+                            />
+                            {(formik.touched.first_name || formik.submitCount > 0) && formik.errors.first_name && <div className="error-message">{formik.errors.first_name}</div>}
+                        </div>
+                        <div className="form-field">
+                            <input
+                                type="text"
+                                name="last_name"
+                                placeholder="Last Name"
+                                {...formik.getFieldProps('last_name')}
+                                className={(formik.touched.last_name || formik.submitCount > 0) && formik.errors.last_name ? 'input-error' : ''}
+                            />
+                            {(formik.touched.last_name || formik.submitCount > 0) && formik.errors.last_name && <div className="error-message">{formik.errors.last_name}</div>}
+                        </div>
+                        <div className="form-field">
+                            <input
+                                type="email"
+                                name="email"
+                                placeholder="Email"
+                                {...formik.getFieldProps('email')}
+                                className={(formik.touched.email || formik.submitCount > 0) && formik.errors.email ? 'input-error' : ''}
+                            />
+                            {(formik.touched.email || formik.submitCount > 0) && formik.errors.email && <div className="error-message">{formik.errors.email}</div>}
+                        </div>
+                        <div className="form-field">
+                            <input
+                                type="text"
+                                name="phone"
+                                placeholder="Phone"
+                                {...formik.getFieldProps('phone')}
+                                className={(formik.touched.phone || formik.submitCount > 0) && formik.errors.phone ? 'input-error' : ''}
+                            />
+                            {(formik.touched.phone || formik.submitCount > 0) && formik.errors.phone && <div className="error-message">{formik.errors.phone}</div>}
+                        </div>
                     </div>
                     <div className="form-actions">
-                        <button type="submit" className="submit-user-btn">Update Customer</button>
-                        <button type="button" className="cancel-btn" onClick={() => setShowEditForm(false)}>Cancel</button>
+                        <button type="submit" className="submit-user-btn" disabled={formik.isSubmitting}>
+                            {formik.isSubmitting ? 'Saving...' : (formik.values.id ? 'Update Customer' : 'Save Customer')}
+                        </button>
+                        <button type="button" className="cancel-btn" onClick={() => setShowForm(false)}>Cancel</button>
                     </div>
                 </form>
             )}
@@ -270,6 +209,7 @@ const Users = () => {
                             ))}
                         </tbody>
                     </table>
+                    <Pagination pagination={pagination} onPageChange={setPage} />
                 </div>
             )}
 

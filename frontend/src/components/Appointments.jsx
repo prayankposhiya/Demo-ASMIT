@@ -1,77 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useNavigate } from 'react-router-dom';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import './Appointments.css';
 import { ADMIN } from '../../config/constants';
 import { normalizeRole } from '../../config/utils';
+import { useNotification } from '../context/NotificationContext';
+import { useAppointments } from '../hooks/useAppointments';
+import Pagination from './Pagination';
 
 const Appointments = () => {
     const auth = useAuth();
     const navigate = useNavigate();
-    const [appointments, setAppointments] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { showNotification } = useNotification();
+    const { appointments, pagination, loading, addAppointment, markComplete, setPage } = useAppointments(auth.isAuthenticated);
     const [showAddForm, setShowAddForm] = useState(false);
-    const [newAppointment, setNewAppointment] = useState({
-        customer_id: '',
-        subject: '',
-        date: '',
-        time: '',
-        description: ''
-    });
     const userRole = normalizeRole(auth?.user?.profile);
     const userSub = auth?.user?.profile?.sub;
 
-    const fetchAppointments = async () => {
-        try {
-            const response = await fetch('http://localhost:8000/api/appointments', {
-                headers: {
-                    'Authorization': `Bearer ${auth.user?.id_token}`
+    const validationSchema = Yup.object({
+        customer_id: Yup.number().positive('Must be a positive number').required('Customer ID is required'),
+        subject: Yup.string().required('Subject is required'),
+        date: Yup.string().required('Date is required'),
+        time: Yup.string().required('Time is required'),
+        description: Yup.string(),
+    });
+
+    const formik = useFormik({
+        initialValues: {
+            customer_id: '',
+            subject: '',
+            date: '',
+            time: '',
+            description: ''
+        },
+        validationSchema,
+        onSubmit: async (values, { resetForm }) => {
+            try {
+                const response = await addAppointment(values);
+                if (response.data.success) {
+                    showNotification('Appointment added successfully!', 'success');
+                    resetForm();
+                    setShowAddForm(false);
                 }
-            });
-            const data = await response.json();
-            console.log(data, "data");
-            setAppointments(data);
-            setLoading(false);
-        } catch (error) {
-            console.error('Error fetching appointments:', error);
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (auth.isAuthenticated) {
-            fetchAppointments();
-        }
-    }, [auth.isAuthenticated]);
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setNewAppointment(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`http://localhost:8000/api/customer-history/${newAppointment.customer_id}/history`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                },
-                body: JSON.stringify({
-                    ...newAppointment,
-                    art: 'appointment'
-                })
-            });
-            if (response.ok) {
-                fetchAppointments();
-                setNewAppointment({ customer_id: '', subject: '', date: '', time: '', description: '' });
-                setShowAddForm(false);
+            } catch (error) {
+                console.error('Error adding appointment:', error);
+                showNotification('Error adding appointment: ' + (error.response?.data?.error || error.message), 'error');
             }
-        } catch (error) {
-            console.error('Error adding appointment:', error);
-        }
-    };
+        },
+    });
 
     const getStatusColor = (dateStr) => {
         const today = new Date();
@@ -86,17 +64,13 @@ const Appointments = () => {
 
     const handleMarkComplete = async (id) => {
         try {
-            const response = await fetch(`http://localhost:8000/api/appointments/${id}/complete`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${auth.user?.id_token}`
-                }
-            });
-            if (response.ok) {
-                fetchAppointments();
+            const response = await markComplete(id);
+            if (response.data.success) {
+                showNotification('Appointment marked as complete', 'success');
             }
         } catch (error) {
             console.error('Error completing appointment:', error);
+            showNotification('Error completing appointment: ' + (error.response?.data?.error || error.message), 'error');
         }
     };
 
@@ -110,44 +84,55 @@ const Appointments = () => {
             </div>
 
             {showAddForm && (
-                <form className="add-appt-form" onSubmit={handleSubmit}>
-                    <input
-                        type="number"
-                        name="customer_id"
-                        placeholder="Customer ID"
-                        value={newAppointment.customer_id}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <input
-                        type="text"
-                        name="subject"
-                        placeholder="Subject"
-                        value={newAppointment.subject}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <input
-                        type="date"
-                        name="date"
-                        value={newAppointment.date}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <input
-                        type="time"
-                        name="time"
-                        value={newAppointment.time}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <textarea
-                        name="description"
-                        placeholder="Description"
-                        value={newAppointment.description}
-                        onChange={handleInputChange}
-                    />
-                    <button type="submit" className="submit-appt-btn">Save Appointment</button>
+                <form className="add-appt-form" onSubmit={formik.handleSubmit}>
+                    <div className="form-field">
+                        <input
+                            type="number"
+                            name="customer_id"
+                            placeholder="Customer ID"
+                            {...formik.getFieldProps('customer_id')}
+                            className={(formik.touched.customer_id || formik.submitCount > 0) && formik.errors.customer_id ? 'input-error' : ''}
+                        />
+                        {(formik.touched.customer_id || formik.submitCount > 0) && formik.errors.customer_id && <div className="error-message">{formik.errors.customer_id}</div>}
+                    </div>
+                    <div className="form-field">
+                        <input
+                            type="text"
+                            name="subject"
+                            placeholder="Subject"
+                            {...formik.getFieldProps('subject')}
+                            className={(formik.touched.subject || formik.submitCount > 0) && formik.errors.subject ? 'input-error' : ''}
+                        />
+                        {(formik.touched.subject || formik.submitCount > 0) && formik.errors.subject && <div className="error-message">{formik.errors.subject}</div>}
+                    </div>
+                    <div className="form-field">
+                        <input
+                            type="date"
+                            name="date"
+                            {...formik.getFieldProps('date')}
+                            className={(formik.touched.date || formik.submitCount > 0) && formik.errors.date ? 'input-error' : ''}
+                        />
+                        {(formik.touched.date || formik.submitCount > 0) && formik.errors.date && <div className="error-message">{formik.errors.date}</div>}
+                    </div>
+                    <div className="form-field">
+                        <input
+                            type="time"
+                            name="time"
+                            {...formik.getFieldProps('time')}
+                            className={(formik.touched.time || formik.submitCount > 0) && formik.errors.time ? 'input-error' : ''}
+                        />
+                        {(formik.touched.time || formik.submitCount > 0) && formik.errors.time && <div className="error-message">{formik.errors.time}</div>}
+                    </div>
+                    <div className="form-field full-width">
+                        <textarea
+                            name="description"
+                            placeholder="Description"
+                            {...formik.getFieldProps('description')}
+                        />
+                    </div>
+                    <button type="submit" className="submit-appt-btn" disabled={formik.isSubmitting}>
+                        {formik.isSubmitting ? 'Saving...' : 'Save Appointment'}
+                    </button>
                 </form>
             )}
 
@@ -196,6 +181,7 @@ const Appointments = () => {
                             ))}
                         </tbody>
                     </table>
+                    <Pagination pagination={pagination} onPageChange={setPage} />
                 </div>
             )}
         </div>

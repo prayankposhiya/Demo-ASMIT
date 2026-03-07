@@ -25,7 +25,8 @@ const pool = mysql.createPool({
  * @returns {Promise<[rows, fields]>} mysql2 result
  */
 function query(sql, params = []) {
-  return pool.execute(sql, params);
+  console.log(sql, params);
+  return pool.query(sql, params);
 }
 
 /**

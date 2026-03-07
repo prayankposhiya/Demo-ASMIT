@@ -9,15 +9,12 @@ const Navbar = () => {
     return (
         <nav className="navbar">
             <div className="navbar-container">
-                <NavLink to="/dashboard" className="navbar-logo">
+                <NavLink to="/appointments" className="navbar-logo">
                     <span className="logo-icon">📅</span>
                     <span className="logo-text">CRM</span>
                 </NavLink>
 
                 <div className="navbar-links">
-                    <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-                        Dashboard
-                    </NavLink>
                     <NavLink to="/users" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
                         Users
                     </NavLink>
