@@ -1,10 +1,6 @@
--- CRM schema: customers and history (per TASKOVERVIEW section 8)
--- Run this once to create the database and tables (e.g. via db/init.js or manually).
-
 CREATE DATABASE IF NOT EXISTS crm_db;
 USE crm_db;
 
--- customers: basic customer info
 CREATE TABLE IF NOT EXISTS customers (
   id INT AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -14,9 +10,6 @@ CREATE TABLE IF NOT EXISTS customers (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- history: customer history entries (appointments, services, other)
--- art = 'appointment' => visible in Appointment List until completed; all arts visible in History tab
--- completed: when true, appointment is excluded from Appointment List but still in History
 CREATE TABLE IF NOT EXISTS history (
   id INT AUTO_INCREMENT PRIMARY KEY,
   customer_id INT NOT NULL,

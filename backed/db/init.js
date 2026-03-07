@@ -1,9 +1,3 @@
-/**
- * Optional dev/setup script: create database and run schema.sql.
- * For local setup only; not used in production app startup.
- * Run: node db/init.js (from backed folder)
- */
-
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');

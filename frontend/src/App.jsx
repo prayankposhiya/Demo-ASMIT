@@ -16,7 +16,6 @@ function App() {
   useEffect(() => {
     injectTokenSource(() => auth.user?.id_token)
     injectUnauthorizedHandler(() => {
-      // Clear OIDC storage and redirect to login
       auth.signinRedirect()
     })
   }, [auth])

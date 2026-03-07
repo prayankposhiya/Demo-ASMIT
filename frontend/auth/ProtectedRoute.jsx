@@ -1,21 +1,10 @@
-// src/auth/ProtectedRoute.jsx
-// ─────────────────────────────────────────────────────────────
-// Wrap any <Route> with this to require authentication.
-// Optionally pass requiredRole="admin" to also check roles.
-//
-// Usage:
-//   <ProtectedRoute>                        ← login required
-//   <ProtectedRoute requiredRole="admin">   ← login + admin role
-// ─────────────────────────────────────────────────────────────
-
 import { useAuth } from "react-oidc-context";
-import { useRoles } from "../hooks/useRoles";
+import { useRoles } from "../src/hooks/useRoles";
 
 export default function ProtectedRoute({ children, requiredRole }) {
     const auth = useAuth();
     const { hasRole } = useRoles();
 
-    // Still checking login state — show spinner
     if (auth.isLoading) {
         return (
             <div
@@ -42,7 +31,6 @@ export default function ProtectedRoute({ children, requiredRole }) {
         );
     }
 
-    // Not logged in → redirect to Zitadel login
     if (!auth.isAuthenticated) {
         auth.signinRedirect();
         return (
@@ -62,7 +50,6 @@ export default function ProtectedRoute({ children, requiredRole }) {
         );
     }
 
-    // Logged in but wrong role → show access denied
     if (requiredRole && !hasRole(requiredRole)) {
         return (
             <div
@@ -87,6 +74,5 @@ export default function ProtectedRoute({ children, requiredRole }) {
         );
     }
 
-    // All checks passed → render the page
     return children;
 }

@@ -4,11 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import './Appointments.css';
-import { ADMIN } from '../../config/constants';
-import { normalizeRole } from '../../config/utils';
 import { useNotification } from '../context/NotificationContext';
 import { useAppointments } from '../hooks/useAppointments';
 import Pagination from './Pagination';
+import { useRoles } from '../hooks/useRoles';
 
 const Appointments = () => {
     const auth = useAuth();
@@ -16,7 +15,7 @@ const Appointments = () => {
     const { showNotification } = useNotification();
     const { appointments, pagination, loading, addAppointment, markComplete, setPage } = useAppointments(auth.isAuthenticated);
     const [showAddForm, setShowAddForm] = useState(false);
-    const userRole = normalizeRole(auth?.user?.profile);
+    const { roles, isAdmin } = useRoles();
     const userSub = auth?.user?.profile?.sub;
 
     const validationSchema = Yup.object({
@@ -168,7 +167,7 @@ const Appointments = () => {
                                         >
                                             View Customer Detail
                                         </button>
-                                        {(userRole === ADMIN || appt.created_by === userSub) && (
+                                        {(isAdmin || appt.created_by === userSub) && (
                                             <button
                                                 className="complete-btn"
                                                 onClick={() => handleMarkComplete(appt.history_id)}

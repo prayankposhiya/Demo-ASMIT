@@ -3,12 +3,11 @@ import { useAuth } from 'react-oidc-context';
 import { useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { normalizeRole } from '../../config/utils';
 import { useNotification } from '../context/NotificationContext';
 import { useUsers } from '../hooks/useUsers';
-import { ADMIN } from '../../config/constants';
 import Pagination from './Pagination';
 import './Users.css';
+import { useRoles } from '../hooks/useRoles';
 
 const Users = () => {
     const auth = useAuth();
@@ -48,7 +47,7 @@ const Users = () => {
         },
     });
 
-    const userRole = normalizeRole(auth?.user?.profile)
+    const { isAdmin } = useRoles();
 
     const handleEditClick = (user) => {
         formik.setValues({
@@ -91,7 +90,7 @@ const Users = () => {
         <div className="users-page">
             <div className="users-header">
                 <h1>Customers</h1>
-                {userRole === ADMIN && (
+                {isAdmin && (
                     <button
                         className="add-user-btn"
                         onClick={() => showForm ? setShowForm(false) : handleAddClick()}
@@ -186,7 +185,7 @@ const Users = () => {
                                         >
                                             🔍
                                         </button>
-                                        {userRole === ADMIN && (
+                                        {isAdmin && (
                                             <>
                                                 <button
                                                     className="edit-btn"

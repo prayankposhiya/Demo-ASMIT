@@ -4,11 +4,10 @@ import { useAuth } from 'react-oidc-context';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import './CustomerDetail.css';
-import { ADMIN } from '../../config/constants';
-import { normalizeRole } from '../../config/utils';
 import { useNotification } from '../context/NotificationContext';
 import { useCustomerDetail } from '../hooks/useCustomerDetail';
 import Pagination from './Pagination';
+import { useRoles } from '../hooks/useRoles';
 
 const CustomerDetail = () => {
     const { id } = useParams();
@@ -28,7 +27,7 @@ const CustomerDetail = () => {
 
     const [activeTab, setActiveTab] = useState('info'); // 'info' or 'history'
     const [showForm, setShowForm] = useState(false);
-    const userRole = normalizeRole(auth?.user?.profile);
+    const { isAdmin } = useRoles();
     const userSub = auth?.user?.profile?.sub;
     const [deleteHistoryId, setDeleteHistoryId] = useState(null);
     const [showDeleteHistoryModal, setShowDeleteHistoryModal] = useState(false);
@@ -160,7 +159,7 @@ const CustomerDetail = () => {
                     <div className="history-section">
                         <div className="section-header">
                             <h2>Interaction History</h2>
-                            <button className="add-history-btn" onClick={() => setShowForm(!showForm)}>
+                            <button className="add-history-btn" onClick={() => { setShowForm(!showForm); formik.resetForm(); }}>
                                 {showForm ? 'Cancel' : '+ Add History Entry'}
                             </button>
                         </div>
@@ -230,7 +229,7 @@ const CustomerDetail = () => {
                                 history.map(item => (
                                     <div key={item.id} className={`history-item ${item.completed ? 'completed' : ''}`}>
                                         <div className="item-actions">
-                                            {(userRole === ADMIN || item.created_by === userSub) && (
+                                            {(isAdmin || item.created_by === userSub) && (
                                                 <>
                                                     <button
                                                         className="edit-icon-btn"
@@ -261,7 +260,7 @@ const CustomerDetail = () => {
                                     </div>
                                 ))
                             )}
-                            <Pagination pagination={historyPagination} onPageChange={setHistoryPage} />
+                            {history.length > 0 && <Pagination pagination={historyPagination} onPageChange={setHistoryPage} />}
                         </div>
                     </div>
                 )}
