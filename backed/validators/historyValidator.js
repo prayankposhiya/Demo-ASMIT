@@ -5,7 +5,7 @@ const historySchemas = {
         subject: Joi.string().trim().required().max(255),
         art: Joi.string().valid('appointment', 'service', 'other').required(),
         date: Joi.date().required(),
-        time: Joi.string().regex(/^([01][0-9]|2[0-3]):([0-5][0-9])$/).required(),
+        time: Joi.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).required(),
         description: Joi.string().trim().allow(null, ''),
     }),
 
@@ -13,7 +13,7 @@ const historySchemas = {
         subject: Joi.string().trim().max(255),
         art: Joi.string().valid('appointment', 'service', 'other'),
         date: Joi.date(),
-        time: Joi.string().regex(/^([01][0-9]|2[0-3]):([0-5][0-9])$/),
+        time: Joi.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/),
         description: Joi.string().trim().allow(null, ''),
     }).min(1),
 
