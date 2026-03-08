@@ -23,7 +23,7 @@ exports.getCustomerHistory = async (req, res, next) => {
         const totalData = countResult[0].total;
 
         const [rows] = await query(
-            'SELECT id, customer_id, subject, art, description, date, time, created_by, created_at, completed FROM history WHERE customer_id = ? ORDER BY date DESC, time DESC LIMIT ? OFFSET ?',
+            'SELECT id, customer_id, subject, art, description, date, time, created_by, created_at, completed FROM history WHERE customer_id = ? ORDER BY date DESC LIMIT ? OFFSET ?',
             [customerId, pageSize, offset]
         );
 
